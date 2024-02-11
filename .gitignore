@@ -1,5 +1,5 @@
 *.6
 *.o
-src/_cgo_*
-src/_obj/
+_cgo_*
+_obj/
 /curl
