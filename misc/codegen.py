@@ -24,15 +24,21 @@ def get_curl_path():
 
 
 opts = []
+deprecated_opts = []
 codes = []
 infos = []
 auths = []
 
 init_pattern = re.compile(
-    r'CINIT\((.*?),' +
-    r'\s+(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),' +
-    r'\s+(\d+)\)'
+    r'CURLINIT\(([^,]+),'
 )
+opt_pattern = re.compile(
+    r'CURLOPT\(CURLOPT_([^,]+),'
+)
+deprecated_pattern = re.compile(
+    r'CURLOPTDEPRECATED\(CURLOPT_([^,]+),'
+)
+auth_pattern = re.compile(r'#define CURLAUTH_(\S+)')
 error_pattern = re.compile(r'^\s+(CURLE_[A-Z_0-9]+),')
 info_pattern = re.compile(r'^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
 
@@ -40,27 +46,28 @@ with open(get_curl_path()) as f:
     for line in f:  # noqa: C901
         match = init_pattern.findall(line)
         if match:
-            opts.append(match[0][0])
+            opts.append(match[0])
+        match = opt_pattern.findall(line)
+        if match:
+            opts.append(match[0])
         if line.startswith('#define CURLOPT_'):
             o = line.split()
-            opts.append(o[1][8:])  # strip :(
-
-        if line.startswith('#define CURLAUTH_'):
-            o = line.split()
-            auths.append(o[1][9:])
-
+            opts.append(o[1][8:])
+        match = deprecated_pattern.findall(line)
+        if match:
+            deprecated_opts.append(match[0])
+        match = auth_pattern.findall(line)
+        if match:
+            auths.append(match[0])
         match = error_pattern.findall(line)
         if match:
             codes.append(match[0])
-
         if line.startswith('#define CURLE_'):
             c = line.split()
             codes.append(c[1])
-
         match = info_pattern.findall(line)
         if match:
             infos.append(match[0])
-
         if line.startswith('#define CURLINFO_'):
             i = line.split()
             if '0x' not in i[2]:  # :(
@@ -95,6 +102,11 @@ const (
 {auth_part}
 )
 
+// Deprecated stuff
+const(
+{deprecated_part}
+)
+
 // generated ends
 """
 
@@ -103,6 +115,12 @@ for c in codes:
     code_part.append("\t{:<25} = C.{}".format(c[4:], c))
 
 code_part = '\n'.join(code_part)
+
+deprecated_part = []
+for o in deprecated_opts:
+    deprecated_part.append("\tOPT_{0:<25} = C.CURLOPT_{0}".format(o))
+
+deprecated_part = '\n'.join(deprecated_part)
 
 opt_part = []
 for o in opts:

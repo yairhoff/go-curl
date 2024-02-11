@@ -3,7 +3,6 @@
 
 import os
 import re
-# import code
 
 CURL_GIT_PATH = os.environ.get("CURL_GIT_PATH", './curl')
 
@@ -26,9 +25,11 @@ def get_curl_path():
 
 def version_symbol(ver):  # noqa: C901
     os.system(
-        'cd "{}" && git status --porcelain && git checkout -f "{}"'
+        # 'cd "{}" && git status --porcelain && git checkout -f "{}"'
+        'cd "{}" && git checkout -f "{}"'
         .format(CURL_GIT_PATH, ver)
     )
+    deprecated_opts = []
     opts = []
     codes = []
     infos = []
@@ -36,49 +37,57 @@ def version_symbol(ver):  # noqa: C901
     auths = []
 
     init_pattern = re.compile(
-        r'CINIT\((.*?),' +
-        r'\s*(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),' +
-        r'\s*(\d+)\)'
+        r'CURLINIT\(([^,]+),'
     )
+    opt_pattern = re.compile(
+        r'CURLOPT\((CURLOPT_[^,]+),'
+    )
+    deprecated_pattern = re.compile(
+        r'CURLOPTDEPRECATED\((CURLOPT_[^,]+),'
+    )
+    auth_pattern = re.compile(r'#define (CURLAUTH_\S+)')
     error_pattern = re.compile(r'^\s+(CURLE_[A-Z_0-9]+),')
     info_pattern = re.compile(r'^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
 
     with open(os.path.join(CURL_GIT_PATH, 'include', 'curl', 'curl.h')) as f:
-        for line in f:
+        for line in f:  # noqa: C901
             match = init_pattern.findall(line)
             if match:
-                opts.append("CURLOPT_" + match[0][0])
+                opts.append('CURLOPT_' + match[0])
+            match = opt_pattern.findall(line)
+            if match:
+                opts.append(match[0])
             if line.startswith('#define CURLOPT_'):
                 o = line.split()
                 opts.append(o[1])
-
-            if line.startswith('#define CURLAUTH_'):
-                a = line.split()
-                auths.append(a[1])
-
+            match = deprecated_pattern.findall(line)
+            if match:
+                deprecated_opts.append(match[0])
+            match = auth_pattern.findall(line)
+            if match:
+                auths.append(match[0])
             match = error_pattern.findall(line)
             if match:
                 codes.append(match[0])
-
             if line.startswith('#define CURLE_'):
                 c = line.split()
                 codes.append(c[1])
-
             match = info_pattern.findall(line)
             if match:
                 infos.append(match[0])
-
             if line.startswith('#define CURLINFO_'):
                 i = line.split()
                 if '0x' not in i[2]:  # :(
                     infos.append(i[1])
-
             if line.startswith('#define CURL_VERSION_'):
                 i = line.split()
                 vers.append(i[1])
 
-    os.system('cd "{}" && git checkout -f "origin"')
-    return opts, codes, infos, vers, auths
+    # os.system(
+    #     ('cd "{}" && git checkout -f "{}"')
+    #     .format(CURL_GIT_PATH, 'master')
+    # )
+    return opts, codes, infos, vers, auths, deprecated_opts
 
 
 def extract_version(tag_str):
@@ -94,10 +103,7 @@ def extract_version(tag_str):
 
 # valid versions that are compatible are 7_16_XXX or higher
 def is_valid_version(version):
-    return
-    version["major"] >= 8 or (
-        (version["major"] == 7 and version["minor"] >= 16)
-    )
+    return version["major"] >= 8 or ((version["major"] == 7 and version["minor"] >= 16))  # noqa: E501
 
 
 tags = os.popen(
@@ -106,10 +112,7 @@ tags = os.popen(
 ).read().split('\n')[:-1]
 tags = map(extract_version, tags)
 tags = filter(is_valid_version, tags)
-versions = sorted(
-    tags, key=lambda v: [v["major"], v["minor"], v["patch"]],
-    reverse=True
-)
+versions = sorted(tags, key=lambda v: [v["major"], v["minor"], v["patch"]], reverse=True)  # noqa: E501
 last = version_symbol("master")
 
 template = """
@@ -126,7 +129,7 @@ if __name__ == '__main__':  # noqa: C901
         major = ver["major"]
         minor = ver["minor"]
         patch = ver["patch"]
-        opts, codes, infos, vers, auths = curr = version_symbol(ver["version"])
+        opts, codes, infos, vers, auths, deprecated_opts = curr = version_symbol(ver["version"])  # noqa: E501
 
         for o in last[0]:
             if o not in opts:
@@ -143,12 +146,15 @@ if __name__ == '__main__':  # noqa: C901
         for a in last[4]:
             if a not in auths:
                 result.append('#define {} 0'.format(a))  # 0 for nil
+        for d in last[5]:
+            if d not in deprecated_opts:
+                result.append("#define {} 0".format(d))  # 0 for nil option
 
         result.append(
             (
                 "#if (LIBCURL_VERSION_MAJOR == {} && " +
                 "((LIBCURL_VERSION_MINOR == {} && " +
-                "LIBCURL_VERSION_PATCH < {})" +
+                "LIBCURL_VERSION_PATCH < {}) " +
                 "|| LIBCURL_VERSION_MINOR < {}))"
             ).format(major, minor, patch, minor))
 
@@ -161,6 +167,8 @@ if __name__ == '__main__':  # noqa: C901
 result.append("#error your version is TOOOOOOOO low")
 
 result.extend(result_tail)
+
+last = version_symbol("master")
 
 with open("./compat.h", 'w') as fp:
     fp.write('\n'.join(result))
