@@ -3,7 +3,7 @@
 
 import os
 import re
-import code
+# import code
 
 CURL_GIT_PATH = os.environ.get("CURL_GIT_PATH", './curl')
 
@@ -24,16 +24,25 @@ def get_curl_path():
     raise Exception("Not found")
 
 
-def version_symbol(ver):
-    os.system('cd "{}" && git status --porcelain && git checkout -f "{}"'.format(CURL_GIT_PATH, ver))
+def version_symbol(ver):  # noqa: C901
+    os.system(
+        'cd "{}" && git status --porcelain && git checkout -f "{}"'
+        .format(CURL_GIT_PATH, ver)
+    )
     opts = []
     codes = []
     infos = []
     vers = []
     auths = []
-    init_pattern = re.compile(r'CINIT\((.*?),\s*(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),\s*(\d+)\)')
-    error_pattern = re.compile('^\s+(CURLE_[A-Z_0-9]+),')
-    info_pattern = re.compile('^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
+
+    init_pattern = re.compile(
+        r'CINIT\((.*?),' +
+        r'\s*(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),' +
+        r'\s*(\d+)\)'
+    )
+    error_pattern = re.compile(r'^\s+(CURLE_[A-Z_0-9]+),')
+    info_pattern = re.compile(r'^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
+
     with open(os.path.join(CURL_GIT_PATH, 'include', 'curl', 'curl.h')) as f:
         for line in f:
             match = init_pattern.findall(line)
@@ -68,27 +77,39 @@ def version_symbol(ver):
                 i = line.split()
                 vers.append(i[1])
 
+    os.system('cd "{}" && git checkout -f "origin"')
     return opts, codes, infos, vers, auths
 
 
 def extract_version(tag_str):
     result = re.search(r"curl-([0-9]+)_([0-9]+)_([0-9]+)", tag_str)
     version = {
-      "major" : int(result.group(1)),
-      "minor" : int(result.group(2)),
-      "patch" : int(result.group(3)),
-      "version" : tag_str
+      "major": int(result.group(1)),
+      "minor": int(result.group(2)),
+      "patch": int(result.group(3)),
+      "version": tag_str
     }
     return version
 
-## valid versions that are compatible are 7_16_XXX or higher
-def is_valid_version(version):
-    return version["major"] >= 8 or (version["major"] == 7 and version["minor"] >= 16)
 
-tags = os.popen("cd {} && git tag | grep -E '^curl-[0-9]+_[0-9]+_[0-9]+$'".format(CURL_GIT_PATH)).read().split('\n')[:-1]
+# valid versions that are compatible are 7_16_XXX or higher
+def is_valid_version(version):
+    return
+    version["major"] >= 8 or (
+        (version["major"] == 7 and version["minor"] >= 16)
+    )
+
+
+tags = os.popen(
+    "cd {} && git tag | grep -E '^curl-[0-9]+_[0-9]+_[0-9]+$'"
+    .format(CURL_GIT_PATH)
+).read().split('\n')[:-1]
 tags = map(extract_version, tags)
 tags = filter(is_valid_version, tags)
-versions = sorted(tags, key=lambda v: [v["major"], v["minor"], v["patch"]], reverse=True)
+versions = sorted(
+    tags, key=lambda v: [v["major"], v["minor"], v["patch"]],
+    reverse=True
+)
 last = version_symbol("master")
 
 template = """
@@ -100,7 +121,7 @@ template = """
 
 result = [template]
 result_tail = ["/* generated ends */\n"]
-if __name__ == '__main__':
+if __name__ == '__main__':  # noqa: C901
     for ver in versions:
         major = ver["major"]
         minor = ver["minor"]
@@ -124,11 +145,16 @@ if __name__ == '__main__':
                 result.append('#define {} 0'.format(a))  # 0 for nil
 
         result.append(
-            # "#if (LIBCURL_VERSION_MINOR == {} && LIBCURL_VERSION_PATCH < {}) || LIBCURL_VERSION_MINOR < {} ".format(
-            "#if (LIBCURL_VERSION_MAJOR == {} && ((LIBCURL_VERSION_MINOR == {} && LIBCURL_VERSION_PATCH < {}) || LIBCURL_VERSION_MINOR < {}))".format(
-                major, minor, patch, minor))
+            (
+                "#if (LIBCURL_VERSION_MAJOR == {} && " +
+                "((LIBCURL_VERSION_MINOR == {} && " +
+                "LIBCURL_VERSION_PATCH < {})" +
+                "|| LIBCURL_VERSION_MINOR < {}))"
+            ).format(major, minor, patch, minor))
 
-        result_tail.insert(0, "#endif /* {}.{}.{} */".format(major, minor, patch))
+        result_tail.insert(0, "#endif /* {}.{}.{} */".format(
+            major, minor, patch
+        ))
 
         last = curr
 
