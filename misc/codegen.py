@@ -14,6 +14,7 @@ target_dirs = [
     '/usr/include',
 ]
 
+
 def get_curl_path():
     for d in target_dirs:
         for root, dirs, files in os.walk(d):
@@ -26,12 +27,17 @@ opts = []
 codes = []
 infos = []
 auths = []
-init_pattern = re.compile(r'CINIT\((.*?),\s+(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),\s+(\d+)\)')
-error_pattern = re.compile('^\s+(CURLE_[A-Z_0-9]+),')
-info_pattern = re.compile('^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
+
+init_pattern = re.compile(
+    r'CINIT\((.*?),' +
+    r'\s+(LONG|OBJECTPOINT|FUNCTIONPOINT|STRINGPOINT|OFF_T),' +
+    r'\s+(\d+)\)'
+)
+error_pattern = re.compile(r'^\s+(CURLE_[A-Z_0-9]+),')
+info_pattern = re.compile(r'^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
 
 with open(get_curl_path()) as f:
-    for line in f:
+    for line in f:  # noqa: C901
         match = init_pattern.findall(line)
         if match:
             opts.append(match[0][0])
