@@ -1,6 +1,8 @@
 package curl
 
 /*
+#cgo CFLAGS: -Wno-deprecated-declarations
+
 #include <stdlib.h>
 #include <curl/curl.h>
 #include "callback.h"
