@@ -1,7 +1,7 @@
 package main
 
 import (
-	curl "github.com/andelf/go-curl"
+	curl "github.com/msva/go-curl"
 )
 
 func main() {

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	curl "github.com/andelf/go-curl"
+	curl "github.com/msva/go-curl"
 	"os"
 	"reflect"
 )

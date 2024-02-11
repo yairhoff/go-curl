@@ -1,11 +1,9 @@
 go-curl
 =======
 
-[![Build Status](https://secure.travis-ci.org/andelf/go-curl.png?branch=master)](http://travis-ci.org/andelf/go-curl)
-
 my golang libcurl(curl) binding.
 
-See more examples in ./examples/ directory~!
+See more examples in ./examples/ directory!
 
 LICENSE
 -------
@@ -27,18 +25,7 @@ How to Install
 
 Make Sure You Have libcurl (and its develop headers, static/dynamic libs) installed!
 
-
-    $ go get -u github.com/andelf/go-curl
-
-Current Status
---------------
-
- * Linux x64
-   * passed go1 (ArchLinux)
- * Windows x86
-   * passed go1 (win7, mingw-gcc 4.5.2, curl 7.22.0)
- * Mac OS
-   * passed go1 (Mac OS X 10.7.3, curl 7.21.4)
+    $ go get -u github.com/msva/go-curl
 
 Sample Program
 --------------
@@ -48,7 +35,7 @@ package main
 
 import (
     "fmt"
-    curl "github.com/andelf/go-curl"
+    curl "github.com/msva/go-curl"
 )
 
 func main() {
