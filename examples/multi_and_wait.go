@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/msva/go-curl"
+	"github.com/yairhoff/go-curl"
 	"time"
 )
 

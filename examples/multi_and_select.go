@@ -17,7 +17,7 @@ import "C"
 
 import (
 	"fmt"
-	curl "github.com/msva/go-curl"
+	curl "github.com/yairhoff/go-curl"
 	"syscall"
 	"unsafe"
 )

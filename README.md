@@ -25,7 +25,7 @@ How to Install
 
 Make Sure You Have libcurl (and its develop headers, static/dynamic libs) installed!
 
-    $ go get -u github.com/msva/go-curl
+    $ go get -u github.com/yairhoff/go-curl
 
 Sample Program
 --------------
@@ -35,7 +35,7 @@ package main
 
 import (
     "fmt"
-    curl "github.com/msva/go-curl"
+    curl "github.com/yairhoff/go-curl"
 )
 
 func main() {

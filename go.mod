@@ -1,3 +1,3 @@
-module github.com/msva/go-curl
+module github.com/yairhoff/go-curl
 
 go 1.21

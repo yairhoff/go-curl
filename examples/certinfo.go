@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/msva/go-curl"
+	"github.com/yairhoff/go-curl"
 )
 
 func main() {
