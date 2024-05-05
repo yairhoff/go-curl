@@ -5,6 +5,7 @@ import os
 import re
 
 CURL_GIT_PATH = os.environ.get("CURL_GIT_PATH", './curl')
+MIN_VERSION = "7.68"
 
 target_dirs = [
     '{}/include/curl'.format(CURL_GIT_PATH),
@@ -101,10 +102,11 @@ def extract_version(tag_str):
     return version
 
 
-# valid versions that are compatible are 7_16_XXX or higher
-def is_valid_version(version):
-    return version["major"] >= 8 or ((version["major"] == 7 and version["minor"] >= 16))  # noqa: E501
 
+def is_valid_version(version):
+    min_major, min_minor = map(int, MIN_VERSION.split("."))
+    major,minor = version["major"],version["minor"]
+    return major > min_major or (major == min_major and minor >= min_minor)
 
 tags = os.popen(
     "cd {} && git tag | grep -E '^curl-[0-9]+_[0-9]+_[0-9]+$'"
@@ -164,7 +166,7 @@ if __name__ == '__main__':  # noqa: C901
 
         last = curr
 
-result.append("#error your version is TOOOOOOOO low")
+result.append(f"#error libcurl version is too old. supported versions are {MIN_VERSION} or above")
 
 result.extend(result_tail)
 
