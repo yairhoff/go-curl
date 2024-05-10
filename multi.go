@@ -104,6 +104,18 @@ func (mcurl *CURLM) Wait(timeoutMs int) (int, error) {
 	return int(handles_with_events), err
 }
 
+func (mcurl *CURLM) Poll(timeoutMs int) (int, error) {
+	p := mcurl.handle
+	handles_with_events := C.int(0)
+	err := newCurlMultiError(C.curl_multi_poll(p, nil, 0, C.int(timeoutMs), &handles_with_events))
+	return int(handles_with_events), err
+}
+
+func (mcurl *CURLM) Wakeup() error {
+	p := mcurl.handle
+	return newCurlMultiError(C.curl_multi_wakeup(p))
+}
+
 // curl_multi_add_handle - add an easy handle to a multi session
 func (mcurl *CURLM) AddHandle(easy *CURL) error {
 	mp := mcurl.handle
