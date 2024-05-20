@@ -33,8 +33,9 @@ init_pattern = re.compile(
     r'CURLINIT\(([^,]+),'
 )
 opt_pattern = re.compile(
-    r'CURLOPT\(CURLOPT_([^,]+),'
+    r'CURLOPT\(\s*CURLOPT_([A-Z0-9_]+)\s*,\s*([A-Z0-9_]+)\s*,\s*[^,]+\s*\)'
 )
+
 deprecated_pattern = re.compile(
     r'CURLOPTDEPRECATED\(CURLOPT_([^,]+),'
 )
@@ -42,14 +43,17 @@ auth_pattern = re.compile(r'#define CURLAUTH_(\S+)')
 error_pattern = re.compile(r'^\s+(CURLE_[A-Z_0-9]+),')
 info_pattern = re.compile(r'^\s+(CURLINFO_[A-Z_0-9]+)\s+=')
 
+opt_const_to_type = {}
+
 with open(get_curl_path()) as f:
     for line in f:  # noqa: C901
         match = init_pattern.findall(line)
         if match:
             opts.append(match[0])
-        match = opt_pattern.findall(line)
-        if match:
-            opts.append(match[0])
+        if match := opt_pattern.match(line.strip()):
+            opt_const, opt_type = match.group(1), match.group(2)
+            opts.append(opt_const)
+            opt_const_to_type[opt_const] = opt_type
         if line.startswith('#define CURLOPT_'):
             o = line.split()
             opts.append(o[1][8:])
@@ -107,9 +111,19 @@ const(
 {deprecated_part}
 )
 
-var(
-{maps_part}
+type CurlOptType uint32
+
+const (
+{curl_opt_types}
 )
+
+var(
+{curl_opt_consts_map}
+
+{curl_opt_types_map}
+)
+
+
 
 // generated ends
 """
@@ -144,15 +158,31 @@ for a in auths:
 
 auth_part = '\n'.join(auth_part)
 
-maps_part = ["\tCurlOptConsts = map[string]int{"]
+curl_opt_consts_map = ["\tCurlOptConsts = map[string]int{"]
 for opt in opts:
     for prefix in ["","OPT_","CURLOPT_"]:
         key = f'"{prefix+opt}"'
         value = f"C.CURLOPT_{opt}"
-        maps_part.append(f'\t\t{key:<25} : {value},')
-    maps_part.append("")
-maps_part.append("\t}")
-maps_part = "\n".join(maps_part)
+        curl_opt_consts_map.append(f'\t\t{key:<25} : {value},')
+    curl_opt_consts_map.append("")
+curl_opt_consts_map.append("\t}")
+curl_opt_consts_map = "\n".join(curl_opt_consts_map)
+
+curl_opt_types_map = ["\tCurlOptTypes = map[int]CurlOptType{"]
+for opt,typename in opt_const_to_type.items():
+    key = f"C.CURLOPT_{opt}"
+    curl_opt_types_map.append(f'\t\t{key:<25} : {typename},')
+curl_opt_types_map.append("\t}")
+
+curl_opt_types_map = "\n".join(curl_opt_types_map)
+
+curl_opt_types = []
+type_list = list(set(opt_const_to_type.values()))
+for i,typename in enumerate(type_list):
+    curl_opt_types.append(f'\t{typename:<25} CurlOptType = {1<<i}')
+any_typename = "CURLOPTTYPE_ANY"
+curl_opt_types.append(f'\n\t{any_typename:<25} CurlOptType = {(1<<i+1) - 1}')
+curl_opt_types = "\n".join(curl_opt_types)
 
 with open('./const_gen.go', 'w') as fp:
     fp.write(template.format(**locals()))
