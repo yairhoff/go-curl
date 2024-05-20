@@ -107,6 +107,10 @@ const(
 {deprecated_part}
 )
 
+var(
+{maps_part}
+)
+
 // generated ends
 """
 
@@ -139,6 +143,16 @@ for a in auths:
     auth_part.append("\tAUTH_{0:<25} = C.CURLAUTH_{0} & (1<<32 - 1)".format(a))
 
 auth_part = '\n'.join(auth_part)
+
+maps_part = ["\tCurlOptConsts = map[string]int{"]
+for opt in opts:
+    for prefix in ["","OPT_","CURLOPT_"]:
+        key = f'"{prefix+opt}"'
+        value = f"C.CURLOPT_{opt}"
+        maps_part.append(f'\t\t{key:<25} : {value},')
+    maps_part.append("")
+maps_part.append("\t}")
+maps_part = "\n".join(maps_part)
 
 with open('./const_gen.go', 'w') as fp:
     fp.write(template.format(**locals()))
